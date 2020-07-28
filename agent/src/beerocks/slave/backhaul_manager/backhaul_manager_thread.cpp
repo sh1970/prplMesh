@@ -897,10 +897,33 @@ bool backhaul_manager::backhaul_fsm_main(bool &skip_select)
             if (db->backhaul.connection_type == AgentDB::sBackhaul::eConnectionType::Wireless) {
                 FSM_MOVE_STATE(INIT_HAL);
             } else { // EType::Wired
-                FSM_MOVE_STATE(MASTER_DISCOVERY);
+                FSM_MOVE_STATE(READY_FOR_MASTER_DISCOVERY);
             }
 
             skip_select = true;
+        }
+        break;
+    }
+    case EState::READY_FOR_MASTER_DISCOVERY: {
+        auto certification_mode = bpl::cfg_get_certification_mode();
+        if (certification_mode < 0) {
+            LOG(ERROR) << "Failed reading certification_mode: " << certification_mode;
+            return false;
+        }
+        // In certification mode we want to wait till dev_set_config is received (wired backhaul)
+        // or start_wps_registration (wireless backhaul).
+        // Otherwise switch to MASTER_DISCOVERY
+        if (!certification_mode) {
+            FSM_MOVE_STATE(MASTER_DISCOVERY);
+        }
+
+        if (!m_agent_ucc_listener) {
+            LOG(ERROR) << "m_agent_ucc_listener == nullptr";
+            return false;
+        }
+
+        if (m_agent_ucc_listener->has_received_dev_set_config()) {
+            FSM_MOVE_STATE(MASTER_DISCOVERY);
         }
         break;
     }

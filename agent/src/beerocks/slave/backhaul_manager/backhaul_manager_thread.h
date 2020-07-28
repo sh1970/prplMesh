@@ -559,6 +559,7 @@ private:
     STATE(WIRELESS_WAIT_FOR_RECONNECT)                                                             \
     STATE(_WIRELESS_END_)                                                                          \
                                                                                                    \
+    STATE(READY_FOR_MASTER_DISCOVERY)                                                              \
     STATE(MASTER_DISCOVERY)                                                                        \
     STATE(SEND_AUTOCONFIG_SEARCH_MESSAGE)                                                          \
     STATE(WAIT_FOR_AUTOCONFIG_RESPONSE_MESSAGE)                                                    \
