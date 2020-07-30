@@ -767,6 +767,14 @@ public:
     int8_t get_client_selected_bands(const sMacAddr &mac);
 
     /**
+     * @brief Check if the radio's band is on one of the selected bands.
+     * @param selected_bands Client selected band/bands. Possible values are bitwise options of eClientSelectedBands.
+     * @param hostap MAC address of a radio.
+     * @return true on success, otherwise false.
+     */
+    bool is_hostap_on_client_selected_bands(const int8_t selected_bands, const sMacAddr &hostap);
+
+    /**
      * @brief Clear client's persistent information.
      * 
      * @param mac MAC address of a client.
