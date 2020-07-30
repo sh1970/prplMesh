@@ -9,7 +9,7 @@
 #ifndef BROKER_SERVER_H
 #define BROKER_SERVER_H
 
-#include <bcl/beerocks_event_loop.h>
+#include <bcl/beerocks_socket_event_loop.h>
 
 #include <mapf/transport/ieee1905_transport_messages.h>
 
@@ -53,33 +53,16 @@ public:
     /**
      * Constructor.
      * 
-     * @param [in] broker_uds_path The path and file name to the server UDS file.
+     * @param [in] broker_server Server socket listening for incoming connections
+     * @param [in] Application event loop.
      */
-    explicit BrokerServer(SocketServer &broker_server, BrokerEventLoop &event_loop);
+    BrokerServer(const std::shared_ptr<SocketServer> &broker_server,
+                 const std::shared_ptr<SocketEventLoop> &event_loop);
 
     /**
      * Destructor.
      */
-    virtual ~BrokerServer() = default;
-
-    /**
-     * @brief Add an event to the Broker's event loop.
-     * @see EventLoop::add_event
-     */
-    virtual bool add_event(BrokerEventLoop::EventType event,
-                           BrokerEventLoop::EventHandlers handlers);
-
-    /**
-     * @brief Delete an event from the Broker's event loop.
-     * @see EventLoop::del_event
-     */
-    virtual bool del_event(BrokerEventLoop::EventType event);
-
-    /**
-     * @brief Run the Broker's event loop.
-     * @see EventLoop::run
-     */
-    virtual int run();
+    virtual ~BrokerServer();
 
     /**
      * @brief Publishes the message with the broker subscribers.
@@ -154,12 +137,12 @@ private:
     /**
      * Shared pointer to the broker server socket.
      */
-    std::shared_ptr<SocketServer> m_broker_server = nullptr;
+    std::shared_ptr<SocketServer> m_server_socket;
 
     /**
-     * Reference to the event loop that should be used by the broker.
+     * Application event loop to use by the broker to wait for I/O events.
      */
-    BrokerEventLoop &m_broker_event_loop;
+    std::shared_ptr<SocketEventLoop> m_event_loop;
 
     /**
      * Map for storing Socket->CMDU Type subscriptions.

@@ -95,7 +95,7 @@ void Ieee1905Transport::update_network_interfaces(
         if (updated_network_interfaces.count(ifname) == 0) {
             MAPF_INFO("interface " << ifname << " is no longer used.");
             if (network_interface.fd) {
-                m_broker->del_event(network_interface.fd);
+                m_event_loop->del_event(network_interface.fd);
                 close(network_interface.fd->getSocketFd());
                 network_interface.fd = nullptr;
             }
@@ -132,7 +132,7 @@ void Ieee1905Transport::update_network_interfaces(
             // add interface raw socket fd to poller loop (unless it's a bridge interface)
             if (!network_interfaces_[ifname].is_bridge && network_interfaces_[ifname].fd) {
                 // TODO: Move to a separate method
-                m_broker->add_event(
+                m_event_loop->add_event(
                     network_interfaces_[ifname].fd,
                     {
                         // Accept incoming connections
@@ -283,7 +283,7 @@ void Ieee1905Transport::handle_interface_status_change(unsigned int if_index, bo
     MAPF_INFO("interface " << ifname << " is now " << (is_active ? "active" : "inactive") << ".");
 
     if (!is_active && network_interfaces_[ifname].fd) {
-        m_broker->del_event(network_interfaces_[ifname].fd);
+        m_event_loop->del_event(network_interfaces_[ifname].fd);
         close(network_interfaces_[ifname].fd->getSocketFd());
         network_interfaces_[ifname].fd = nullptr;
     }
@@ -294,7 +294,7 @@ void Ieee1905Transport::handle_interface_status_change(unsigned int if_index, bo
         }
         if (network_interfaces_[ifname].fd)
             // Handle network events
-            m_broker->add_event(
+            m_event_loop->add_event(
                 network_interfaces_[ifname].fd,
                 {
                     // Accept incoming connections

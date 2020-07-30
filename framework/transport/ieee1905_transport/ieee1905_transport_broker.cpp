@@ -41,21 +41,22 @@ static bool is_restricted_type(uint32_t type)
 /////////////////////////// Broker Implementation ////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
-BrokerServer::BrokerServer(SocketServer &broker_server, BrokerEventLoop &event_loop)
-    : m_broker_server(std::make_shared<SocketServer>(broker_server)),
-      m_broker_event_loop(event_loop)
+BrokerServer::BrokerServer(const std::shared_ptr<SocketServer> &server_socket,
+                           const std::shared_ptr<SocketEventLoop> &event_loop)
+    : m_server_socket(server_socket), m_event_loop(event_loop)
 {
-    LOG_IF(!m_broker_server, FATAL) << "Failed allocating memory!";
+    LOG_IF(!m_server_socket, FATAL) << "Server socket is a null pointer!";
+    LOG_IF(!m_event_loop, FATAL) << "Event loop is a null pointer!";
 
     // Check for errors
-    LOG_IF(!m_broker_server->getError().empty(), FATAL)
-        << "Failed opening server socket: " << m_broker_server
-        << " [ERROR: " << m_broker_server->getError() << "]";
+    LOG_IF(!m_server_socket->getError().empty(), FATAL)
+        << "Failed opening server socket: " << m_server_socket
+        << " [ERROR: " << m_server_socket->getError() << "]";
 
     // Add the socket to the poll
     LOG_IF(
-        !m_broker_event_loop.add_event(
-            m_broker_server,
+        !m_event_loop->add_event(
+            m_server_socket,
             {
                 // Accept incoming connections
                 .on_read =
@@ -94,18 +95,7 @@ BrokerServer::BrokerServer(SocketServer &broker_server, BrokerEventLoop &event_l
     LOG(INFO) << "Broker server is running!";
 }
 
-bool BrokerServer::add_event(BrokerEventLoop::EventType event,
-                             BrokerEventLoop::EventHandlers handlers)
-{
-    return m_broker_event_loop.add_event(event, handlers);
-}
-
-bool BrokerServer::del_event(BrokerEventLoop::EventType event)
-{
-    return m_broker_event_loop.del_event(event);
-}
-
-int BrokerServer::run() { return m_broker_event_loop.run(); }
+BrokerServer::~BrokerServer() { m_event_loop->del_event(m_server_socket); }
 
 bool BrokerServer::publish(const messages::Message &msg)
 {
@@ -288,7 +278,7 @@ bool BrokerServer::socket_connected(std::shared_ptr<SocketServer> sd)
     LOG(DEBUG) << "Accepted new connection, fd = " << new_socket->getSocketFd();
 
     // Add the newly accepted socket into the poll
-    if (!m_broker_event_loop.add_event(
+    if (!m_event_loop->add_event(
             new_socket,
             {
                 // Handle incoming data

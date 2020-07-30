@@ -8,7 +8,6 @@
 
 #include <bcl/beerocks_backport.h>
 #include <bcl/beerocks_defines.h>
-#include <bcl/beerocks_socket_event_loop.h>
 
 #include <mapf/common/config.h>
 
@@ -32,19 +31,21 @@ static constexpr int listen_buffer_size = 10;
 /////////////////////////////// Implementation ///////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
+Ieee1905Transport::Ieee1905Transport(const std::shared_ptr<SocketEventLoop> &event_loop)
+    : m_event_loop(event_loop)
+{
+}
+
 void Ieee1905Transport::run()
 {
     // Broker server UDS socket
-    SocketServer broker_server_socket(std::string(TMP_PATH "/" BEEROCKS_BROKER_UDS),
-                                      listen_buffer_size);
-
-    // Broker socket based event loop
-    SocketEventLoop broker_event_loop;
+    auto server_socket = std::make_shared<SocketServer>(
+        std::string(TMP_PATH "/" BEEROCKS_BROKER_UDS), listen_buffer_size);
 
     LOG(INFO) << "Starting 1905 transport...";
 
     // Create the broker server
-    m_broker = std::make_unique<BrokerServer>(broker_server_socket, broker_event_loop);
+    m_broker = std::make_unique<BrokerServer>(server_socket, m_event_loop);
     LOG_IF(!m_broker, FATAL) << "Failed creating broker server!";
 
     // Register broker handlers for internal and external messages
@@ -77,42 +78,34 @@ void Ieee1905Transport::run()
     });
 
     // Add the netlink socket into the broker's event loop
-    broker_event_loop.add_event(netlink_socket,
-                                {
-                                    // Accept incoming connections
-                                    .on_read =
-                                        [&](BrokerServer::BrokerEventLoop::EventType socket,
-                                            BrokerServer::BrokerEventLoop::EventLoopType &loop) {
-                                            LOG(DEBUG) << "incoming message on the netlink socket";
-                                            handle_netlink_pollin_event();
-                                            return true;
-                                        },
+    m_event_loop->add_event(netlink_socket,
+                            {
+                                // Accept incoming connections
+                                .on_read =
+                                    [&](BrokerServer::BrokerEventLoop::EventType socket,
+                                        BrokerServer::BrokerEventLoop::EventLoopType &loop) {
+                                        LOG(DEBUG) << "incoming message on the netlink socket";
+                                        handle_netlink_pollin_event();
+                                        return true;
+                                    },
 
-                                    // Not implemented
-                                    .on_write   = nullptr,
+                                // Not implemented
+                                .on_write = nullptr,
 
-                                    // Fail on server socket disconnections or errors
-                                    .on_disconnect =
-                                        [&](BrokerServer::BrokerEventLoop::EventType socket,
-                                            BrokerServer::BrokerEventLoop::EventLoopType &loop) {
-                                            LOG(ERROR) << "netlink socket disconnected";
-                                            return false;
-                                        },
-                                    .on_error =
-                                        [&](BrokerServer::BrokerEventLoop::EventType socket,
-                                            BrokerServer::BrokerEventLoop::EventLoopType &loop) {
-                                            LOG(ERROR) << "netlink socket error";
-                                            return false;
-                                        },
-                                });
-
-    // Run the broker event loop
-    for (;;) {
-        if (m_broker->run() < 0) {
-            LOG(ERROR) << "Broker event loop failure!";
-            return;
-        }
-    }
+                                // Fail on server socket disconnections or errors
+                                .on_disconnect =
+                                    [&](BrokerServer::BrokerEventLoop::EventType socket,
+                                        BrokerServer::BrokerEventLoop::EventLoopType &loop) {
+                                        LOG(ERROR) << "netlink socket disconnected";
+                                        return false;
+                                    },
+                                .on_error =
+                                    [&](BrokerServer::BrokerEventLoop::EventType socket,
+                                        BrokerServer::BrokerEventLoop::EventLoopType &loop) {
+                                        LOG(ERROR) << "netlink socket error";
+                                        return false;
+                                    },
+                            });
 }
 
 } // namespace transport
