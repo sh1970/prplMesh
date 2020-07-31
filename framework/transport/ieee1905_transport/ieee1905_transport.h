@@ -13,6 +13,7 @@
 #include <mapf/transport/ieee1905_transport_messages.h>
 
 #include <bcl/beerocks_event_loop.h>
+#include <bcl/network/interface_state_monitor.h>
 
 #include "ieee1905_transport_broker.h"
 
@@ -58,12 +59,35 @@ public:
     /**
      * Class constructor
      *
+     * @param interface_state_monitor Interface state monitor to detect changes in the state of
+     * network interfaces (transitions to and from the up-and-running state).
      * @param event_loop Event loop to wait for I/O events.
      */
-    explicit Ieee1905Transport(const std::shared_ptr<EventLoop> &event_loop);
-    void run();
+    Ieee1905Transport(
+        const std::shared_ptr<beerocks::net::InterfaceStateMonitor> &interface_state_monitor,
+        const std::shared_ptr<EventLoop> &event_loop);
+
+    /**
+     * @brief Starts the transport process.
+     *
+     * @return True on success and false otherwise.
+     */
+    bool start();
+
+    /**
+     * @brief Stops the transport process.
+     *
+     * @return True on success and false otherwise.
+     */
+    bool stop();
 
 private:
+    /**
+     * Interface state monitor used by the process to detect changes in the state of network
+     * interfaces (transitions to and from the up-and-running state).
+     */
+    std::shared_ptr<beerocks::net::InterfaceStateMonitor> m_interface_state_monitor;
+
     /**
      * Application event loop used by the process to wait for I/O events.
      */

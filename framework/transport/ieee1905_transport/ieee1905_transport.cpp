@@ -31,13 +31,20 @@ static constexpr int listen_buffer_size = 10;
 /////////////////////////////// Implementation ///////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
-Ieee1905Transport::Ieee1905Transport(const std::shared_ptr<EventLoop> &event_loop)
-    : m_event_loop(event_loop)
+Ieee1905Transport::Ieee1905Transport(
+    const std::shared_ptr<beerocks::net::InterfaceStateMonitor> &interface_state_monitor,
+    const std::shared_ptr<EventLoop> &event_loop)
+    : m_interface_state_monitor(interface_state_monitor), m_event_loop(event_loop)
 {
 }
 
-void Ieee1905Transport::run()
+bool Ieee1905Transport::start()
 {
+    if (m_broker) {
+        LOG(ERROR) << "Failed to start 1905 transport: already started";
+        return false;
+    }
+
     // Broker server UDS socket
     auto server_socket = std::make_shared<SocketServer>(
         std::string(TMP_PATH "/" BEEROCKS_BROKER_UDS), listen_buffer_size);
@@ -63,47 +70,23 @@ void Ieee1905Transport::run()
             return true;
         });
 
-    // init netlink socket
-    if (!open_netlink_socket()) {
-        MAPF_ERR("cannot open netlink socket.");
-        return;
-    }
-
-    // Create a shared_ptr socket wrapper for the netlink socket
-    auto netlink_socket = std::shared_ptr<Socket>(new Socket(netlink_fd_), [](Socket *socket) {
-        // Close the socket file descriptor
-        if (socket) {
-            close(socket->getSocketFd());
-        }
+    m_interface_state_monitor->set_handler([&](uint32_t iface_index, bool iface_state) {
+        handle_interface_status_change(iface_index, iface_state);
     });
 
-    // Add the netlink socket into the broker's event loop
-    m_event_loop->register_handlers(netlink_socket->getSocketFd(),
-                                    {
-                                        // Accept incoming connections
-                                        .on_read =
-                                            [&](int fd, EventLoop &loop) {
-                                                LOG(DEBUG)
-                                                    << "incoming message on the netlink socket";
-                                                handle_netlink_pollin_event();
-                                                return true;
-                                            },
+    return true;
+}
 
-                                        // Not implemented
-                                        .on_write = nullptr,
+bool Ieee1905Transport::stop()
+{
+    if (!m_broker) {
+        LOG(ERROR) << "Failed to stop 1905 transport: not started";
+        return false;
+    }
 
-                                        // Fail on server socket disconnections or errors
-                                        .on_disconnect =
-                                            [&](int fd, EventLoop &loop) {
-                                                LOG(ERROR) << "netlink socket disconnected";
-                                                return false;
-                                            },
-                                        .on_error =
-                                            [&](int fd, EventLoop &loop) {
-                                                LOG(ERROR) << "netlink socket error";
-                                                return false;
-                                            },
-                                    });
+    m_interface_state_monitor->set_handler(nullptr);
+
+    return true;
 }
 
 } // namespace transport
