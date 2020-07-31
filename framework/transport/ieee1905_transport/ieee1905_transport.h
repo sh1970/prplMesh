@@ -12,7 +12,7 @@
 #include <mapf/common/logger.h>
 #include <mapf/transport/ieee1905_transport_messages.h>
 
-#include <bcl/beerocks_socket_event_loop.h>
+#include <bcl/beerocks_event_loop.h>
 
 #include "ieee1905_transport_broker.h"
 
@@ -67,7 +67,7 @@ private:
     /**
      * Application event loop used by the process to wait for I/O events.
      */
-    std::shared_ptr<SocketEventLoop> m_event_loop;
+    std::shared_ptr<EventLoop> m_event_loop;
 
     std::string if_index2name(unsigned int index)
     {

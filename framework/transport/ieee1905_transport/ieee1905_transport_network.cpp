@@ -95,7 +95,7 @@ void Ieee1905Transport::update_network_interfaces(
         if (updated_network_interfaces.count(ifname) == 0) {
             MAPF_INFO("interface " << ifname << " is no longer used.");
             if (network_interface.fd) {
-                m_event_loop->del_event(network_interface.fd);
+                m_event_loop->remove_handlers(network_interface.fd->getSocketFd());
                 close(network_interface.fd->getSocketFd());
                 network_interface.fd = nullptr;
             }
@@ -132,16 +132,14 @@ void Ieee1905Transport::update_network_interfaces(
             // add interface raw socket fd to poller loop (unless it's a bridge interface)
             if (!network_interfaces_[ifname].is_bridge && network_interfaces_[ifname].fd) {
                 // TODO: Move to a separate method
-                m_event_loop->add_event(
-                    network_interfaces_[ifname].fd,
+                m_event_loop->register_handlers(
+                    network_interfaces_[ifname].fd->getSocketFd(),
                     {
                         // Accept incoming connections
                         .on_read =
-                            [&](broker::BrokerServer::BrokerEventLoop::EventType socket,
-                                broker::BrokerServer::BrokerEventLoop::EventLoopType &loop) {
-                                LOG(DEBUG) << "Incoming message on interface fd: "
-                                           << socket->getSocketFd();
-                                handle_interface_pollin_event(socket->getSocketFd());
+                            [&](int fd, EventLoop &loop) {
+                                LOG(DEBUG) << "Incoming message on interface fd: " << fd;
+                                handle_interface_pollin_event(fd);
                                 return true;
                             },
 
@@ -151,12 +149,10 @@ void Ieee1905Transport::update_network_interfaces(
 
                         // Handle interface errors
                         .on_error =
-                            [&](broker::BrokerServer::BrokerEventLoop::EventType socket,
-                                broker::BrokerServer::BrokerEventLoop::EventLoopType &loop) {
-                                LOG(DEBUG) << "Error on interface fd: " << socket->getSocketFd()
-                                           << " (disabling it).";
+                            [&](int fd, EventLoop &loop) {
+                                LOG(DEBUG) << "Error on interface fd: " << fd << " (disabling it).";
 
-                                handle_interface_status_change(socket->getSocketFd(), false);
+                                handle_interface_status_change(fd, false);
                                 return true;
                             },
                     });
@@ -283,7 +279,7 @@ void Ieee1905Transport::handle_interface_status_change(unsigned int if_index, bo
     MAPF_INFO("interface " << ifname << " is now " << (is_active ? "active" : "inactive") << ".");
 
     if (!is_active && network_interfaces_[ifname].fd) {
-        m_event_loop->del_event(network_interfaces_[ifname].fd);
+        m_event_loop->remove_handlers(network_interfaces_[ifname].fd->getSocketFd());
         close(network_interfaces_[ifname].fd->getSocketFd());
         network_interfaces_[ifname].fd = nullptr;
     }
@@ -294,16 +290,14 @@ void Ieee1905Transport::handle_interface_status_change(unsigned int if_index, bo
         }
         if (network_interfaces_[ifname].fd)
             // Handle network events
-            m_event_loop->add_event(
-                network_interfaces_[ifname].fd,
+            m_event_loop->register_handlers(
+                network_interfaces_[ifname].fd->getSocketFd(),
                 {
                     // Accept incoming connections
                     .on_read =
-                        [&](broker::BrokerServer::BrokerEventLoop::EventType socket,
-                            broker::BrokerServer::BrokerEventLoop::EventLoopType &loop) {
-                            LOG(DEBUG)
-                                << "Incoming message on interface fd: " << socket->getSocketFd();
-                            handle_interface_pollin_event(socket->getSocketFd());
+                        [&](int fd, EventLoop &loop) {
+                            LOG(DEBUG) << "Incoming message on interface fd: " << fd;
+                            handle_interface_pollin_event(fd);
                             return true;
                         },
 
@@ -313,12 +307,10 @@ void Ieee1905Transport::handle_interface_status_change(unsigned int if_index, bo
 
                     // Handle interface errors
                     .on_error =
-                        [&](broker::BrokerServer::BrokerEventLoop::EventType socket,
-                            broker::BrokerServer::BrokerEventLoop::EventLoopType &loop) {
-                            LOG(DEBUG) << "Error on interface fd: " << socket->getSocketFd()
-                                       << " (disabling it).";
+                        [&](int fd, EventLoop &loop) {
+                            LOG(DEBUG) << "Error on interface fd: " << fd << " (disabling it).";
 
-                            handle_interface_status_change(socket->getSocketFd(), false);
+                            handle_interface_status_change(fd, false);
                             return true;
                         },
                 });

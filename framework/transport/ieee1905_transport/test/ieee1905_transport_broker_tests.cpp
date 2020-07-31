@@ -6,6 +6,7 @@
  * See LICENSE file for more details.
  */
 
+#include <bcl/beerocks_event_loop_impl.h>
 #include <gtest/gtest.h>
 
 #include "../ieee1905_transport_broker.h"
@@ -13,7 +14,6 @@
 #include <sys/uio.h>
 
 #include <bcl/beerocks_os_utils.h>
-#include <bcl/beerocks_socket_event_loop.h>
 #include <bcl/beerocks_thread_base.h>
 
 #include <beerocks/tlvf/beerocks_message.h>
@@ -65,7 +65,7 @@ public:
 protected:
     bool m_error_occurred = false;
 
-    virtual bool handle_msg(std::shared_ptr<Socket> &sd) override
+    bool handle_msg(const std::shared_ptr<Socket> &sd) override
     {
         if (BrokerServer::handle_msg(sd) == false) {
             m_error_occurred = true;
@@ -98,7 +98,7 @@ TEST(broker_server, setup)
 TEST(broker_server, invalid_message_magic)
 {
     auto server_socket = std::make_shared<SocketServer>(broker_uds_file, broker_listen_buffer);
-    auto event_loop    = std::make_shared<SocketEventLoop>(broker_timeout);
+    auto event_loop    = std::make_shared<EventLoopImpl>(broker_timeout);
     BrokerServerWrapper broker_wrapper(server_socket, event_loop);
 
     // Register a dummy internal message handler
@@ -117,8 +117,11 @@ TEST(broker_server, invalid_message_magic)
 
     LOG(DEBUG) << "Sending INVALID magic...";
     ASSERT_TRUE(messages::send_transport_message(sock1, dummy, &header));
+    LOG(DEBUG) << ">>>>>>>>>>>>> 1";
     ASSERT_EQ(1, event_loop->run()); // Process
+    LOG(DEBUG) << ">>>>>>>>>>>>> 2";
     ASSERT_TRUE(broker_wrapper.error());
+    LOG(DEBUG) << ">>>>>>>>>>>>> 3";
 
     LOG(DEBUG) << "Sending VALID magic...";
     ASSERT_TRUE(messages::send_transport_message(sock1, dummy));
@@ -129,7 +132,7 @@ TEST(broker_server, invalid_message_magic)
 TEST(broker_server, subscribe_empty_message)
 {
     auto server_socket = std::make_shared<SocketServer>(broker_uds_file, broker_listen_buffer);
-    auto event_loop    = std::make_shared<SocketEventLoop>(broker_timeout);
+    auto event_loop    = std::make_shared<EventLoopImpl>(broker_timeout);
     BrokerServerWrapper broker_wrapper(server_socket, event_loop);
 
     // Create a subscribe message
@@ -149,7 +152,7 @@ TEST(broker_server, subscribe_empty_message)
 TEST(broker_server, subscribe_single_type)
 {
     auto server_socket = std::make_shared<SocketServer>(broker_uds_file, broker_listen_buffer);
-    auto event_loop    = std::make_shared<SocketEventLoop>(broker_timeout);
+    auto event_loop    = std::make_shared<EventLoopImpl>(broker_timeout);
     BrokerServerWrapper broker_wrapper(server_socket, event_loop);
 
     // Create a subscribe message
@@ -171,7 +174,7 @@ TEST(broker_server, subscribe_single_type)
 TEST(broker_server, subscribe_multiple_types)
 {
     auto server_socket = std::make_shared<SocketServer>(broker_uds_file, broker_listen_buffer);
-    auto event_loop    = std::make_shared<SocketEventLoop>(broker_timeout);
+    auto event_loop    = std::make_shared<EventLoopImpl>(broker_timeout);
     BrokerServerWrapper broker_wrapper(server_socket, event_loop);
 
     // Create a subscribe message
@@ -195,7 +198,7 @@ TEST(broker_server, subscribe_multiple_types)
 TEST(broker_server, unsubscribe_empty_message)
 {
     auto server_socket = std::make_shared<SocketServer>(broker_uds_file, broker_listen_buffer);
-    auto event_loop    = std::make_shared<SocketEventLoop>(broker_timeout);
+    auto event_loop    = std::make_shared<EventLoopImpl>(broker_timeout);
     BrokerServerWrapper broker_wrapper(server_socket, event_loop);
 
     // Create a subscribe message
@@ -215,7 +218,7 @@ TEST(broker_server, unsubscribe_empty_message)
 TEST(broker_server, unsubscribe_single_type)
 {
     auto server_socket = std::make_shared<SocketServer>(broker_uds_file, broker_listen_buffer);
-    auto event_loop    = std::make_shared<SocketEventLoop>(broker_timeout);
+    auto event_loop    = std::make_shared<EventLoopImpl>(broker_timeout);
     BrokerServerWrapper broker_wrapper(server_socket, event_loop);
 
     // Create a subscribe message
@@ -237,7 +240,7 @@ TEST(broker_server, unsubscribe_single_type)
 TEST(broker_server, unsubscribe_multiple_types)
 {
     auto server_socket = std::make_shared<SocketServer>(broker_uds_file, broker_listen_buffer);
-    auto event_loop    = std::make_shared<SocketEventLoop>(broker_timeout);
+    auto event_loop    = std::make_shared<EventLoopImpl>(broker_timeout);
     BrokerServerWrapper broker_wrapper(server_socket, event_loop);
 
     // Create a subscribe message
@@ -261,7 +264,7 @@ TEST(broker_server, unsubscribe_multiple_types)
 TEST(broker_server, subscribe_unsubscribe)
 {
     auto server_socket = std::make_shared<SocketServer>(broker_uds_file, broker_listen_buffer);
-    auto event_loop    = std::make_shared<SocketEventLoop>(broker_timeout);
+    auto event_loop    = std::make_shared<EventLoopImpl>(broker_timeout);
     BrokerServerWrapper broker_wrapper(server_socket, event_loop);
 
     // Create a subscribe message
@@ -291,7 +294,7 @@ TEST(broker_server, subscribe_unsubscribe)
 TEST(broker_server, publish_internal_message)
 {
     auto server_socket = std::make_shared<SocketServer>(broker_uds_file, broker_listen_buffer);
-    auto event_loop    = std::make_shared<SocketEventLoop>(broker_timeout);
+    auto event_loop    = std::make_shared<EventLoopImpl>(broker_timeout);
     BrokerServerWrapper broker_wrapper(server_socket, event_loop);
 
     // Connect to the broker

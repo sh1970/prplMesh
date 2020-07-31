@@ -8,7 +8,7 @@
 
 #include "ieee1905_transport.h"
 
-#include <bcl/beerocks_socket_event_loop.h>
+#include <bcl/beerocks_event_loop_impl.h>
 
 #include <net/if.h>
 #include <unistd.h>
@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 {
     mapf::Logger::Instance().LoggerInit("transport");
 
-    auto event_loop = std::make_shared<SocketEventLoop>();
+    auto event_loop = std::make_shared<EventLoopImpl>();
 
     Ieee1905Transport ieee1905_transport(event_loop);
 

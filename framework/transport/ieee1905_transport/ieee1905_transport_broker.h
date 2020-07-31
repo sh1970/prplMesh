@@ -9,7 +9,7 @@
 #ifndef BROKER_SERVER_H
 #define BROKER_SERVER_H
 
-#include <bcl/beerocks_socket_event_loop.h>
+#include <bcl/beerocks_event_loop.h>
 
 #include <mapf/transport/ieee1905_transport_messages.h>
 
@@ -34,11 +34,6 @@ namespace broker {
 class BrokerServer {
 public:
     /**
-     * The type of the supported EventLoop.
-     */
-    using BrokerEventLoop = EventLoop<std::shared_ptr<Socket>>;
-
-    /**
      * @brief Transport messages (@see Message) handler function definition.
      *
      * Parameters to the event handler function are:
@@ -57,7 +52,7 @@ public:
      * @param [in] Application event loop.
      */
     BrokerServer(const std::shared_ptr<SocketServer> &broker_server,
-                 const std::shared_ptr<SocketEventLoop> &event_loop);
+                 const std::shared_ptr<EventLoop> &event_loop);
 
     /**
      * Destructor.
@@ -100,9 +95,9 @@ protected:
      * 
      * @param [in] sd The socket interface on which the incoming data event originated.
      * 
-     * @return true on success of false otherwise.
+     * @return true on success and false otherwise.
      */
-    virtual bool handle_msg(std::shared_ptr<Socket> &sd);
+    virtual bool handle_msg(const std::shared_ptr<Socket> &sd);
 
 private:
     /**
@@ -111,27 +106,25 @@ private:
      * @param [in] sd The socket interface on which the incoming data event originated.
      * @param [in] msg The internal SubscribeMessage message.
      * 
-     * @return true on success of false otherwise.
+     * @return true on success and false otherwise.
      */
-    bool handle_subscribe(std::shared_ptr<Socket> &sd, const messages::SubscribeMessage &msg);
+    bool handle_subscribe(const std::shared_ptr<Socket> &sd, const messages::SubscribeMessage &msg);
 
     /**
-     * @brief Handler method for socket connections.
+     * @brief Handler method to accept incoming socket connections.
      * 
-     * @param [in] sd The socket interface on which the connection event originated.
-     * 
-     * @return true on success of false otherwise.
+     * @return true on success and false otherwise.
      */
-    bool socket_connected(std::shared_ptr<SocketServer> sd);
+    bool socket_connected();
 
     /**
      * @brief Handler method for socket disconnections.
      * 
      * @param [in] sd The socket interface on which the disconnection event originated.
      * 
-     * @return true on success of false otherwise.
+     * @return true on success and false otherwise.
      */
-    bool socket_disconnected(std::shared_ptr<Socket> sd);
+    bool socket_disconnected(const std::shared_ptr<Socket> &sd);
 
 private:
     /**
@@ -142,7 +135,7 @@ private:
     /**
      * Application event loop to use by the broker to wait for I/O events.
      */
-    std::shared_ptr<SocketEventLoop> m_event_loop;
+    std::shared_ptr<EventLoop> m_event_loop;
 
     /**
      * Map for storing Socket->CMDU Type subscriptions.
