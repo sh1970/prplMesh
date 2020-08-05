@@ -1325,5 +1325,13 @@ if __name__ == '__main__':
     t.start_test('init')
     env.launch_environment_docker(options.unique_id, options.skip_init, options.tag)
 
+    time.sleep(7)
+
+    # env.controller.cmd_reply("dev_set_config,program,map,bss_info1,10:0c:6b:a1:bd:6c 8x Multi-AP-24G-1 0x0020 0x0008 maprocks1 0 1,bss_info2,10:0c:6b:a1:bd:6c 8x Multi-AP-24G-2 0x0020 0x0008 maprocks2 1 0,bss_info3,02:12:cd:31:d0:52 8x Multi-AP-24GC-1 0x0020 0x0008 maprocks3 0 1")
+
+    for agent in env.agents:
+        debug("sending dev_set_config to an agent")
+        agent.cmd_reply("dev_set_config,name,PrplMeshCTTDUT,program,map,backhaul,eth")
+
     if t.run_tests(options.tests):
         sys.exit(1)
