@@ -4797,7 +4797,7 @@ const std::string backhaul_manager::freq_to_radio_mac(eFreqType freq) const
 
 bool backhaul_manager::start_wps_pbc(const sMacAddr &radio_mac)
 {
-    if ((m_eFSMState == EState::OPERATIONAL)) {
+    if ((m_eFSMState == EState::OPERATIONAL) || (m_eFSMState == EState::READY_FOR_MASTER_DISCOVERY)) {
         // WPS PBC registration on AP interface
         auto msg = message_com::create_vs_message<
             beerocks_message::cACTION_BACKHAUL_START_WPS_PBC_REQUEST>(cmdu_tx);
